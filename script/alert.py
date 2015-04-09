@@ -11,11 +11,13 @@
 
 import sys, getopt, time
 from yapbl import PushBullet
+from ConfigParser import ConfigParser, NoSectionError, NoOptionError
+from systemd import journal
 
-API_KEY = ''
+CONFIG_FILE = '/etc/smarthome.conf'
 
-def send_alert(image):
-    pb = PushBullet(API_KEY)
+def send_alert(image, apiKey):
+    pb = PushBullet(apiKey)
     timePoint = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     pb.push_note('入侵警报', timePoint + '，发现入侵者！！！')
     pb.push_file(open(image, 'rb'))
@@ -31,4 +33,14 @@ if __name__ == '__main__':
         sys.stderr.write("Image file missing.\n")
         sys.exit()
 
-    send_alert(imageFile)
+    try:
+        cfg = ConfigParser()
+        cfg.read(CONFIG_FILE)
+        apiKey = cfg.get('global', 'api_key')
+    except (NoSectionError, NoOptionError), e:
+        err = 'Config file is missing or invalid: ' + str(e)
+        journal.send(err, PRIORITY=journal.LOG_ERR)
+        sys.stderr.write(err + "\n")
+        sys.exit(1)
+
+    send_alert(imageFile, apiKey)
