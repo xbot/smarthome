@@ -28,10 +28,9 @@ class Account:
 
 class SmartHome:
 
-    lastFetch = None
-
     def __init__(self, cfg):
         self.cfg = cfg
+        self.lastFetch = time.time()
 
     def followCommand(self, cmd):
         if cmd['command'] == 'start_motion':
