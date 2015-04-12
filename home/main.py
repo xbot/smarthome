@@ -36,19 +36,25 @@ class SmartHome:
         self.pb = Pushbullet(self.apiKey)
 
     def followCommand(self, cmd, fromIden=None):
+	journal.send('Follow command: ' + json.dumps(cmd))
         if cmd['command'] == 'get_status':
-            fromDevice = self.getDevice(fromIden)
-            if fromDevice is None:
-                journal.send('get_status: Cannot find device with iden "' + fromIden + '"', PRIORITY=journal.LOG_ERR)
-                return
-            status = {'command':'get_status', 'data':{}}
-            (tmpStatus, tmpOutput) = commands.getstatusoutput('systemctl status motion')
-            status['data']['motion'] = tmpStatus == 0 and 'on' or 'off'
-            self.pb.push_note('status', json.dumps(status), fromDevice)
+            pass
         elif cmd['command'] == 'start_motion':
             os.system('systemctl start motion')
         elif cmd['command'] == 'stop_motion':
             os.system('systemctl stop motion')
+
+        fromDevice = self.getDevice(fromIden)
+        if fromDevice is None:
+            journal.send('get_status: Cannot find device with iden "' + fromIden + '"', PRIORITY=journal.LOG_ERR)
+            return
+        self.pb.push_note('status', json.dumps(self.getStatus()), fromDevice)
+
+    def getStatus(self):
+        status = {'command':'get_status', 'data':{}}
+        (tmpStatus, tmpOutput) = commands.getstatusoutput('systemctl status motion')
+        status['data']['motion'] = tmpStatus == 0 and 'on' or 'off'
+        return status
 
     def run(self):
         try:
@@ -60,18 +66,20 @@ class SmartHome:
                 self.cfg.write(f)
 
         def on_push(msg):
+            journal.send('Got message: ' + json.dumps(msg))
             try:
                 pushes = self.pb.get_pushes(self.lastFetch)
+                journal.send('Got pushes: ' + json.dumps(pushes))
                 self.lastFetch = time.time()
                 if type(pushes) is types.TupleType and len(pushes)>1 \
                         and type(pushes[1]) is types.ListType:
-                    for msg in pushes[1]:
-                        if msg.has_key('target_device_iden') and msg['target_device_iden'] == deviceIden:
-                            cmd = json.loads(msg['body'])
-                            journal.send('Follow command: ' + msg['body'])
-                            self.followCommand(cmd, fromIden=msg['source_device_iden'])
+                    for push in pushes[1]:
+                        journal.send('Check push: ' + json.dumps(push))
+                        if push.has_key('target_device_iden') and push['target_device_iden'] == deviceIden:
+                            cmd = json.loads(push['body'])
+                            self.followCommand(cmd, fromIden=push['source_device_iden'])
             except (PushbulletError, IOError, ValueError, KeyError), e:
-                journal.send(e.message, PRIORITY=journal.LOG_ERR)
+                journal.send(str(e), PRIORITY=journal.LOG_ERR)
 
         lsr = Listener(Account(self.apiKey), on_push)
         lsr.run()
