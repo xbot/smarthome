@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">SmartHome</string>
+    <string name="btn_monitor_on">打开监控</string>
+    <string name="action_settings">Settings</string>
+    <string name="btn_monitor_off">关闭监控</string>
+    <string name="title_activity_busy">BusyActivity</string>
+    <string name="hello_world">Hello world!</string>
+
+</resources>

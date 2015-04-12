@@ -107,4 +107,3 @@ if __name__ == '__main__':
         sys.exit(1)
     except KeyboardInterrupt:
         print('Game over.')
-
