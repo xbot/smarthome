@@ -7,21 +7,21 @@ import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Window;
+import android.widget.Toast;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.koushikdutta.async.http.AsyncHttpClient;
 import com.koushikdutta.async.http.AsyncHttpClient.JSONObjectCallback;
+import com.koushikdutta.async.http.AsyncHttpClient.WebSocketConnectCallback;
 import com.koushikdutta.async.http.AsyncHttpGet;
 import com.koushikdutta.async.http.AsyncHttpPost;
 import com.koushikdutta.async.http.AsyncHttpResponse;
 import com.koushikdutta.async.http.WebSocket;
-import com.koushikdutta.async.http.body.JSONObjectBody;
-import com.koushikdutta.async.http.AsyncHttpClient.WebSocketConnectCallback;
 import com.koushikdutta.async.http.WebSocket.StringCallback;
+import com.koushikdutta.async.http.body.JSONObjectBody;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -32,7 +32,10 @@ import java.util.HashMap;
 
 public class BusyActivity extends Activity {
 	
-	public static final String TAG = "SmartHomeBusy";
+	public static final String TAG = "BusyActivity";
+    public static final String DEVICE_NAME = "SmartHomeClient";
+    public static final String SERVER_DEVICE_NAME = "SmartHome";
+
 	private SharedPreferences sharedPref;
 	private String apiKey;
 	private String deviceIden;
@@ -40,6 +43,7 @@ public class BusyActivity extends Activity {
 	private Editor prefEditor;
     private double lastFetch = System.currentTimeMillis() / 1000.0;
     private ObjectMapper objectMapper = new ObjectMapper();
+    private long exitTime;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -48,8 +52,7 @@ public class BusyActivity extends Activity {
 		setContentView(R.layout.activity_busy);
 		
 		setFinishOnTouchOutside(false);
-        Log.e(TAG, "-----------------" + this.toString());
-		
+
 		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 		prefEditor = sharedPref.edit();
 		apiKey = sharedPref.getString("api_key", "");
@@ -97,35 +100,28 @@ public class BusyActivity extends Activity {
                                                     JSONObject push = (JSONObject) pushes.get(i);
                                                     if (push.has("target_device_iden") && push.getString("target_device_iden").equals(deviceIden)) {
                                                         Log.d(TAG, "Got response: " + push.toString());
-                                                        Intent carier = new Intent();
+                                                        Intent carrier = new Intent();
                                                         JSONObject data = new JSONObject(push.getString("body"));
-                                                        carier.putExtra("data", data.toString());
-                                                        Log.e(TAG, "xxx:" + data.toString());
-                                                        setResult(RESULT_OK, carier);
+                                                        carrier.putExtra("data", data.toString());
+                                                        carrier.putExtra("type", push.getString("title"));
+                                                        setResult(RESULT_OK, carrier);
                                                         finish();
                                                     }
                                                 }
 											} catch (JSONException e) {
-												// TODO Auto-generated catch block
-												e.printStackTrace();
+                                                e.printStackTrace();
+												Log.e(TAG, e.getMessage());
+                                                Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
 											}
 										}
 
 									});
 									lastFetch = System.currentTimeMillis() / 1000.0;
 								}
-							} catch (JsonParseException e) {
-								// TODO Auto-generated catch
-								// block
-								e.printStackTrace();
-							} catch (JsonMappingException e) {
-								// TODO Auto-generated catch
-								// block
-								e.printStackTrace();
 							} catch (IOException e) {
-								// TODO Auto-generated catch
-								// block
-								e.printStackTrace();
+                                e.printStackTrace();
+                                Log.e(TAG, e.getMessage());
+                                Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
 							}
 						}
 					});
@@ -153,13 +149,22 @@ public class BusyActivity extends Activity {
                 @Override
                 public void onCompleted(Exception arg0, AsyncHttpResponse arg1,
                         JSONObject responseData) {
-                    Log.d(TAG, "Command pushing status: " + responseData.toString());
+                    if (responseData == null) {
+                        Log.e(TAG, "Cannot get response data, request failed.");
+                        Intent carrier = new Intent();
+                        carrier.putExtra("msg", getString(R.string.msg_request_failed));
+                        setResult(RESULT_CANCELED, carrier);
+                        finish();
+                    } else {
+                        Log.d(TAG, "Command pushing status: " + responseData.toString());
+                    }
                 }
 
             });
         } catch (JSONException e1) {
-            // TODO Auto-generated catch block
             e1.printStackTrace();
+            Log.e(TAG, e1.getMessage());
+            Toast.makeText(getApplicationContext(), e1.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -179,13 +184,13 @@ public class BusyActivity extends Activity {
                         Log.d(TAG, "Found device " + device.toString());
                         if (!device.has("nickname") || !device.has("iden"))
                             continue;
-                        if (device.getString("nickname").equals(MainActivity.deviceName)) {
+                        if (device.getString("nickname").equals(DEVICE_NAME)) {
                             Log.d(TAG, "Found the right device.");
                             deviceIden = device.getString("iden");
                             prefEditor.putString("device_iden", deviceIden);
                             prefEditor.commit();
                         }
-                        if (device.getString("nickname").equals(MainActivity.serverDeviceName)) {
+                        if (device.getString("nickname").equals(SERVER_DEVICE_NAME)) {
                             Log.d(TAG, "Found the server device.");
                             serverDeviceIden = device.getString("iden");
                             prefEditor.putString("server_device_iden", serverDeviceIden);
@@ -210,7 +215,7 @@ public class BusyActivity extends Activity {
 			        	AsyncHttpPost post = new AsyncHttpPost("https://api.pushbullet.com/v2/devices");
 						post.addHeader("Authorization", "Bearer " + apiKey);
 				        JSONObject requestData = new JSONObject();
-						requestData.put("nickname", MainActivity.deviceName);
+						requestData.put("nickname", DEVICE_NAME);
 						requestData.put("type", "stream");
 						post.setBody(new JSONObjectBody(requestData));
 						AsyncHttpClient.getDefaultInstance().executeJSONObject(post, new JSONObjectCallback() {
@@ -227,24 +232,49 @@ public class BusyActivity extends Activity {
 
                                         followCommand();
 									} catch (JSONException e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
+                                        e.printStackTrace();
+                                        Log.e(TAG, e.getMessage());
+                                        Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
 									}
 								} else {
-									// TODO 创建设备失败，报错
+                                    Log.e(TAG, "Failed creating device, got response: " + responseData.toString());
+                                    Toast.makeText(getApplicationContext(), getString(R.string.msg_device_creation_failure), Toast.LENGTH_SHORT).show();
 								}
 							}
 							
 						});
 					} catch (JSONException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
+                        e.printStackTrace();
+                        Log.e(TAG, e.getMessage());
+                        Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
 					}
 				} catch (JSONException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+                    e.printStackTrace();
+                    Log.e(TAG, e.getMessage());
+                    Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
 				}
 			}
 		});
 	}
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK
+                && event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (System.currentTimeMillis() - exitTime > 2000) {
+                Toast.makeText(this.getApplicationContext(),
+                        this.getString(R.string.msg_cancel_job), Toast.LENGTH_SHORT)
+                        .show();
+                exitTime = System.currentTimeMillis();
+            } else {
+                Intent carrier = new Intent();
+                carrier.putExtra("msg", getString(R.string.msg_job_canceled));
+                setResult(RESULT_CANCELED, carrier);
+                finish();
+                System.exit(0);
+            }
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
 }

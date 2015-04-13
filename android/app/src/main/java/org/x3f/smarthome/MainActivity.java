@@ -6,20 +6,20 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class MainActivity extends ActionBarActivity implements OnClickListener {
 	
-	public static final String TAG = "SmartHome";
-    public static final String deviceName = "SmartHomeClient";
-    public static final String serverDeviceName = "SmartHome";
+	public static final String TAG = "MainActivity";
     public static final int REQUEST_GET_STATUS = 1;
     public static final int REQUEST_TOGGLE_MOTION = 2;
 
@@ -27,15 +27,16 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 	private String apiKey;
     private boolean initialized = false;
     private JSONObject statuses;
+    private long exitTime;
 
-    private Button btnMonitor;
+    private ImageButton btnMonitor;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		btnMonitor = (Button) findViewById(R.id.btnMonitor);
+		btnMonitor = (ImageButton) findViewById(R.id.btnMonitor);
 		btnMonitor.setOnClickListener(this);
 		
 		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
@@ -58,7 +59,11 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 			Intent it = new Intent(this, SettingsActivity.class);
 			startActivity(it);
 			return true;
-		}
+		} else if (id == R.id.action_about) {
+            Intent it = new Intent(this, AboutActivity.class);
+            startActivity(it);
+            return true;
+        }
 		return super.onOptionsItemSelected(item);
 	}
 
@@ -68,7 +73,7 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 		case R.id.btnMonitor:
             try {
                 Intent it = new Intent(this, BusyActivity.class);
-                if (statuses instanceof JSONObject && statuses.has("motion")) {
+                if (statuses != null && statuses.has("motion")) {
                     if (statuses.getString("motion").equals("on"))
                         it.putExtra("job", "stop_motion");
                     else
@@ -77,8 +82,10 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
                 startActivityForResult(it, REQUEST_TOGGLE_MOTION);
             } catch (JSONException e) {
                 e.printStackTrace();
+                Log.e(TAG, e.getMessage());
+                Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
             }
-            return;
+            break;
         }
 	}
 	
@@ -102,26 +109,67 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 	}
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent carier) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent carrier) {
 //        if (requestCode == REQUEST_GET_STATUS) {
             if (resultCode == RESULT_OK) {
-                Log.d(TAG, "Got result: " + carier.getStringExtra("data"));
+                Log.d(TAG, "Got result: " + carrier.getStringExtra("data"));
                 try {
-                    JSONObject data = new JSONObject(carier.getStringExtra("data"));
-                    if (data.has("command") && data.getString("command").equals("get_status")
+                    if (!carrier.hasExtra("type")) {
+                        Log.e(TAG, "Activity result missing the attribute 'type'.");
+                        Toast.makeText(getApplicationContext(), String.format(getString(R.string.msg_data_missing), "type"), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (!carrier.hasExtra("data")) {
+                        Log.e(TAG, "Activity result missing the attribute 'data'.");
+                        Toast.makeText(getApplicationContext(), String.format(getString(R.string.msg_data_missing), "data"), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    JSONObject data = new JSONObject(carrier.getStringExtra("data"));
+                    if (carrier.getStringExtra("type").equals("status")
                             && data.has("data")) {
                         statuses = data.getJSONObject("data");
                         Log.e(TAG, "statuses: " + statuses.toString());
                         if (statuses.has("motion") && statuses.getString("motion").equals("on")) {
-                            btnMonitor.setText(getString(R.string.btn_monitor_off));
+//                            btnMonitor.setText(getString(R.string.btn_monitor_off));
+                            btnMonitor.setImageDrawable(getResources()
+                                    .getDrawable(R.drawable.webcam_on));
                         } else {
-                            btnMonitor.setText(getString(R.string.btn_monitor_on));
+//                            btnMonitor.setText(getString(R.string.btn_monitor_on));
+                            btnMonitor.setImageDrawable(getResources()
+                                    .getDrawable(R.drawable.webcam_off));
                         }
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
+                    Log.e(TAG, e.getMessage());
+                    Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
                 }
-//            }
-        }
+            } else if (resultCode == RESULT_CANCELED) {
+                if (carrier.hasExtra("msg")) {
+                    Toast.makeText(getApplicationContext(), carrier.getStringExtra("msg"), Toast.LENGTH_SHORT).show();
+                }
+                if (!initialized)
+                    initialized = true;
+            }
+//        }
     }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK
+                && event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (System.currentTimeMillis() - exitTime > 2000) {
+                Toast.makeText(this.getApplicationContext(),
+                        this.getString(R.string.msg_quit), Toast.LENGTH_SHORT)
+                        .show();
+                exitTime = System.currentTimeMillis();
+            } else {
+                finish();
+                System.exit(0);
+            }
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
 }

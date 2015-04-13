@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">SmartHome</string>
+    <string name="app_name">有巢氏</string>
+    <string name="app_version">M1</string>
+    <string name="about_title">智能家庭客戶端</string>
+    <string name="about_content">版本：M1\n作者：淘氣\n電郵：donie.leigh@gmail.com</string>
+    <string name="title_activity_busy">请稍候</string>
+    <string name="action_settings">设置</string>
+    <string name="action_about">關於</string>
     <string name="btn_monitor_on">打开监控</string>
-    <string name="action_settings">Settings</string>
     <string name="btn_monitor_off">关闭监控</string>
-    <string name="title_activity_busy">BusyActivity</string>
-    <string name="hello_world">Hello world!</string>
+    <string name="msg_device_creation_failure">注册设备失败</string>
+    <string name="msg_data_missing">数据缺少“%s”</string>
+    <string name="msg_quit">再按一次退出應用</string>
+    <string name="msg_cancel_job">再按一次中止當前任務</string>
+    <string name="msg_request_failed">請求發送失敗，檢查網絡並重試</string>
+    <string name="msg_job_canceled">任務已取消</string>
 
 </resources>

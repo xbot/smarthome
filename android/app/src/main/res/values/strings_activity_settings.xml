@@ -1,10 +1,10 @@
 <resources>
 
-    <string name="title_activity_settings">Settings</string>
+    <string name="title_activity_settings">设置</string>
 
     <!-- Strings related to Settings -->
 
-    <string name="pref_header_general">General</string>
-    <string name="pref_option_api_key">API Key</string>
+    <string name="pref_header_general">全局</string>
+    <string name="pref_option_api_key">PushBullet API Key</string>
 
 </resources>

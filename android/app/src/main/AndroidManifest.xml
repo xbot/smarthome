@@ -27,11 +27,15 @@
         <activity
             android:name=".BusyActivity"
             android:label="@string/title_activity_busy"
-            android:theme="@android:style/Theme.Dialog" >
+            android:theme="@style/Transparent" >
         </activity>
         <activity
             android:name=".SettingsActivity"
             android:label="@string/title_activity_settings" >
+        </activity>
+        <activity
+            android:name=".AboutActivity"
+            android:theme="@android:style/Theme.Dialog" >
         </activity>
     </application>
 

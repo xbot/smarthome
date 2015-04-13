@@ -4,10 +4,11 @@
     android:gravity="center"
     android:orientation="vertical" >
 
-    <Button
+    <ImageButton
         android:id="@+id/btnMonitor"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/btn_monitor_on" />
+        android:background="#00000000"
+        android:src="@drawable/webcam_on" />
 
 </LinearLayout>

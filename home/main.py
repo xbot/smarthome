@@ -51,7 +51,7 @@ class SmartHome:
         self.pb.push_note('status', json.dumps(self.getStatus()), fromDevice)
 
     def getStatus(self):
-        status = {'command':'get_status', 'data':{}}
+        status = {'data':{}}
         (tmpStatus, tmpOutput) = commands.getstatusoutput('systemctl status motion')
         status['data']['motion'] = tmpStatus == 0 and 'on' or 'off'
         return status
