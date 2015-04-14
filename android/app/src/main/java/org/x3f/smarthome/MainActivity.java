@@ -55,7 +55,12 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
-		if (id == R.id.action_settings) {
+        if (id == R.id.action_refresh) {
+            Intent it = new Intent(this, BusyActivity.class);
+            it.putExtra("job", "get_status");
+            startActivityForResult(it, REQUEST_GET_STATUS);
+            return true;
+        } else if (id == R.id.action_settings) {
 			Intent it = new Intent(this, SettingsActivity.class);
 			startActivity(it);
 			return true;
