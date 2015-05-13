@@ -9,6 +9,7 @@
 #
 ####################################################
 # TODO hack get_pushes(), only fetch this device
+# TODO add configuration validations
 
 import sys
 import os
@@ -18,24 +19,34 @@ import json
 import commands
 from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from pushbullet import Pushbullet, Listener, PushbulletError
+import paho.mqtt.client as mqtt
 from systemd import journal
 
 CONFIG_FILE = '/etc/smarthome.conf'
 
-class Account:
+def singleton(cls):
+    """ Set the decorated class singleton. """
+
+    instances = {}
+
+    def _singleton(*args, **kw):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kw)
+        return instances[cls]
+
+    return _singleton
+
+class Account(object):
 
     def __init__(self, apiKey):
         self.api_key = apiKey
 
-class SmartHome:
-
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self.lastFetch = time.time()
-        self.apiKey = self.cfg.get('global', 'api_key')
-        self.pb = Pushbullet(self.apiKey)
+@singleton
+class SmartHome(object):
+    """Common bussiness logic."""
 
     def followCommand(self, cmd, fromIden=None):
+        '''Do job as required.'''
 	journal.send('Follow command: ' + json.dumps(cmd))
         if cmd['command'] == 'get_status':
             pass
@@ -44,17 +55,33 @@ class SmartHome:
         elif cmd['command'] == 'stop_motion':
             os.system('systemctl stop motion')
 
-        fromDevice = self.getDevice(fromIden)
-        if fromDevice is None:
-            journal.send('get_status: Cannot find device with iden "' + fromIden + '"', PRIORITY=journal.LOG_ERR)
-            return
-        self.pb.push_note('status', json.dumps(self.getStatus()), fromDevice)
-
     def getStatus(self):
+        '''Collect the current statuses.'''
         status = {'data':{}}
         (tmpStatus, tmpOutput) = commands.getstatusoutput('systemctl status motion')
         status['data']['motion'] = tmpStatus == 0 and 'on' or 'off'
         return status
+
+class Route(object):
+    """Interface of the main bussiness."""
+
+    def __init__(self, cfg):
+        self.cfg = cfg
+        self.home = SmartHome()
+
+    def run(self):
+        '''Keep running and listening for all commands from user.'''
+        pass
+
+class PushBulletRoute(Route):
+    """SmartHome using pushbullet."""
+
+    def __init__(self, cfg):
+        super(PushBulletRoute).__init__(cfg)
+        
+        self.lastFetch = time.time()
+        self.apiKey = self.cfg.get('global', 'api_key')
+        self.pb = Pushbullet(self.apiKey)
 
     def run(self):
         try:
@@ -77,7 +104,13 @@ class SmartHome:
                         journal.send('Check push: ' + json.dumps(push))
                         if push.has_key('target_device_iden') and push['target_device_iden'] == deviceIden:
                             cmd = json.loads(push['body'])
-                            self.followCommand(cmd, fromIden=push['source_device_iden'])
+                            self.home.followCommand(cmd)
+                            fromIden = push['source_device_iden']
+                            fromDevice = self.getDevice(fromIden)
+                            if fromDevice is None:
+                                journal.send('get_status: Cannot find device with iden "' + fromIden + '"', PRIORITY=journal.LOG_ERR)
+                                return
+                            self.pb.push_note('status', json.dumps(self.home.getStatus()), fromDevice)
             except (PushbulletError, IOError, ValueError, KeyError), e:
                 journal.send(str(e), PRIORITY=journal.LOG_ERR)
 
@@ -91,6 +124,35 @@ class SmartHome:
                     return device
         return None
 
+class MosquittoRoute(Route):
+    """SmartHome using mosquitto."""
+
+    def __init__(self, cfg):
+        super(self.__class__, self).__init__(cfg)
+
+        self.mq = mqtt.Client()
+        self.mq.username_pw_set(self.cfg.get('mosquitto', 'user'), self.cfg.get('mosquitto', 'password'))
+
+        def on_connect(client, userdata, flags, rc):
+            journal.send("Connected with result code "+str(rc))
+            self.mq.subscribe(self.cfg.get('mosquitto', 'topic_in'))
+        self.mq.on_connect = on_connect
+
+        def on_message(client, userdata, msg):
+            journal.send('Got message: ' + msg.payload)
+            try:
+                cmd = json.loads(msg.payload)
+            except ValueError, e:
+                journal.send('Invalid JSON received: ' + msg.payload + ', ' + e.message, PRIORITY=journal.LOG_ERR)
+                return
+            self.home.followCommand(cmd)
+            self.mq.publish(self.cfg.get('mosquitto', 'topic_out'), json.dumps(self.home.getStatus()), 0)
+        self.mq.on_message = on_message
+
+    def run(self):
+        self.mq.connect(self.cfg.get('mosquitto', 'host'), 1883, 60)
+        self.mq.loop_forever()
+
 
 if __name__ == '__main__':
     try:
@@ -98,8 +160,8 @@ if __name__ == '__main__':
         cfg.read(CONFIG_FILE)
         cfg.get('global', 'api_key')
 
-        sm = SmartHome(cfg)
-        sm.run()
+        r = MosquittoRoute(cfg)
+        r.run()
     except (NoSectionError, NoOptionError), e:
         err = 'Config file is missing or invalid: ' + str(e)
         journal.send(err, PRIORITY=journal.LOG_ERR)
