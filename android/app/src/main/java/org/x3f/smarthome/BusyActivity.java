@@ -23,6 +23,8 @@ import com.koushikdutta.async.http.WebSocket;
 import com.koushikdutta.async.http.WebSocket.StringCallback;
 import com.koushikdutta.async.http.body.JSONObjectBody;
 
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,8 +46,9 @@ public class BusyActivity extends Activity {
     private double lastFetch = System.currentTimeMillis() / 1000.0;
     private ObjectMapper objectMapper = new ObjectMapper();
     private long exitTime;
+    private MqttClient client;
 
-	@Override
+    @Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -128,7 +131,13 @@ public class BusyActivity extends Activity {
 				}
 			}
 		);
-	}
+
+        try {
+            client = new MqttClient("tcp://localhost:1883", "pahomqttpublish1");
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
 
     private void followCommand() {
         Intent it = getIntent();
