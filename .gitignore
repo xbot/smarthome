@@ -88,3 +88,4 @@ proguard/
 
 *.swp
 *.dbg
+nohup.out

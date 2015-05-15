@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CHECK_REGEX="python2\s\.\/main\.py"
-COMMAND="proxychains ./main.py"
+COMMAND="nohup ./main.py > /dev/null 2>&1"
 
 IsRunning()
 {
