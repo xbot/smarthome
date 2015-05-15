@@ -65,7 +65,10 @@ public class SettingsActivity extends PreferenceActivity {
 		// Bind the summaries of EditText/List/Dialog/Ringtone preferences to
 		// their values. When their values change, their summaries are updated
 		// to reflect the new value, per the Android Design guidelines.
-		bindPreferenceSummaryToValue(findPreference("api_key"));
+		bindPreferenceSummaryToValue(findPreference("communication_protocol"));
+		bindPreferenceSummaryToValue(findPreference("mq_host"));
+		bindPreferenceSummaryToValue(findPreference("mq_login"));
+		bindPreferenceSummaryToValue(findPreference("pb_api_key"));
 	}
 
 	/** {@inheritDoc} */

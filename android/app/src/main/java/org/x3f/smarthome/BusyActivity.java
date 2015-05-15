@@ -23,8 +23,13 @@ import com.koushikdutta.async.http.WebSocket;
 import com.koushikdutta.async.http.WebSocket.StringCallback;
 import com.koushikdutta.async.http.body.JSONObjectBody;
 
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -39,14 +44,15 @@ public class BusyActivity extends Activity {
     public static final String SERVER_DEVICE_NAME = "SmartHome";
 
 	private SharedPreferences sharedPref;
+    private Editor prefEditor;
 	private String apiKey;
 	private String deviceIden;
 	private String serverDeviceIden;
-	private Editor prefEditor;
     private double lastFetch = System.currentTimeMillis() / 1000.0;
     private ObjectMapper objectMapper = new ObjectMapper();
     private long exitTime;
     private MqttClient client;
+    private String protocol;
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -58,84 +64,129 @@ public class BusyActivity extends Activity {
 
 		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 		prefEditor = sharedPref.edit();
-		apiKey = sharedPref.getString("api_key", "");
-		deviceIden = sharedPref.getString("device_iden", "");
-		serverDeviceIden = sharedPref.getString("server_device_iden", "");
-		Log.d(TAG, "Stored device iden: " + deviceIden + ", server device iden: " + serverDeviceIden);
-		
-		// If no device iden is found, check if there is already one with the specified name.
-		if (deviceIden.length() == 0 || serverDeviceIden.length() == 0) {
-			findDevices();
-		} else {
-            followCommand();
-		}
+        
+        protocol = sharedPref.getString(Constants.OPT_PROTOCOL, Constants.PROTOCOL_MOSQUITTO);
 
-		AsyncHttpClient.getDefaultInstance().websocket(
-			"wss://stream.pushbullet.com/websocket/" + apiKey,
-			"wss", new WebSocketConnectCallback() {
-				@Override
-				public void onCompleted(Exception ex, WebSocket webSocket) {
-					if (ex != null) {
-						ex.printStackTrace();
-						return;
-					}
-					webSocket.setStringCallback(new StringCallback() {
-						@Override
-						public void onStringAvailable(
-								String rawStr) {
-							try {
-								HashMap<String, String> data = objectMapper.readValue(rawStr, new TypeReference<HashMap<String, String>>() {});
-								if (data.containsKey("type") && data.get("type").equals("tickle")
-										&& data.containsKey("subtype") && data.get("subtype").equals("push")) {
-									// Fetch pushes from last time
-									AsyncHttpGet get = new AsyncHttpGet("https://api.pushbullet.com/v2/pushes?modified_after=" + String.valueOf(lastFetch));
-									get.addHeader("Authorization", "Bearer " + apiKey);
-									AsyncHttpClient.getDefaultInstance().executeJSONObject(get, new JSONObjectCallback() {
+        if (protocol.equals(Constants.PROTOCOL_PUSHBULLET)) {
+            apiKey = sharedPref.getString(Constants.OPT_PB_APIKEY, "");
+            deviceIden = sharedPref.getString(Constants.OPT_PB_CLIENT_IDEN, "");
+            serverDeviceIden = sharedPref.getString(Constants.OPT_PB_SERVER_IDEN, "");
+            Log.d(TAG, "Stored device iden: " + deviceIden + ", server device iden: " + serverDeviceIden);
 
-										@Override
-										public void onCompleted(Exception arg0,
-												AsyncHttpResponse arg1,
-												JSONObject responseData) {
-											try {
-                                                JSONArray pushes = responseData.getJSONArray("pushes");
+            // If no device iden is found, check if there is already one with the specified name.
+            if (deviceIden.length() == 0 || serverDeviceIden.length() == 0) {
+                findDevices();
+            } else {
+                followCommand();
+            }
+
+            AsyncHttpClient.getDefaultInstance().websocket(
+                    "wss://stream.pushbullet.com/websocket/" + apiKey,
+                    "wss", new WebSocketConnectCallback() {
+                        @Override
+                        public void onCompleted(Exception ex, WebSocket webSocket) {
+                            if (ex != null) {
+                                ex.printStackTrace();
+                                return;
+                            }
+                            webSocket.setStringCallback(new StringCallback() {
+                                @Override
+                                public void onStringAvailable(
+                                        String rawStr) {
+                                    try {
+                                        HashMap<String, String> data = objectMapper.readValue(rawStr, new TypeReference<HashMap<String, String>>() {});
+                                        if (data.containsKey("type") && data.get("type").equals("tickle")
+                                                && data.containsKey("subtype") && data.get("subtype").equals("push")) {
+                                            // Fetch pushes from last time
+                                            AsyncHttpGet get = new AsyncHttpGet("https://api.pushbullet.com/v2/pushes?modified_after=" + String.valueOf(lastFetch));
+                                            get.addHeader("Authorization", "Bearer " + apiKey);
+                                            AsyncHttpClient.getDefaultInstance().executeJSONObject(get, new JSONObjectCallback() {
+
+                                                @Override
+                                                public void onCompleted(Exception arg0,
+                                                                        AsyncHttpResponse arg1,
+                                                                        JSONObject responseData) {
+                                                    try {
+                                                        JSONArray pushes = responseData.getJSONArray("pushes");
 //                                                Log.d(TAG, "Got pushes: " + pushes.toString());
-                                                for (int i=0; i < pushes.length(); i++) {
-                                                    JSONObject push = (JSONObject) pushes.get(i);
-                                                    if (push.has("target_device_iden") && push.getString("target_device_iden").equals(deviceIden)) {
-                                                        Log.d(TAG, "Got response: " + push.toString());
-                                                        Intent carrier = new Intent();
-                                                        JSONObject data = new JSONObject(push.getString("body"));
-                                                        carrier.putExtra("data", data.toString());
-                                                        carrier.putExtra("type", push.getString("title"));
-                                                        setResult(RESULT_OK, carrier);
-                                                        finish();
+                                                        for (int i=0; i < pushes.length(); i++) {
+                                                            JSONObject push = (JSONObject) pushes.get(i);
+                                                            if (push.has("target_device_iden") && push.getString("target_device_iden").equals(deviceIden)) {
+                                                                Log.d(TAG, "Got response: " + push.toString());
+                                                                Intent carrier = new Intent();
+                                                                JSONObject data = new JSONObject(push.getString("body"));
+                                                                carrier.putExtra("data", data.toString());
+                                                                carrier.putExtra("type", push.getString("title"));
+                                                                setResult(RESULT_OK, carrier);
+                                                                finish();
+                                                            }
+                                                        }
+                                                    } catch (JSONException e) {
+                                                        e.printStackTrace();
+                                                        Log.e(TAG, e.getMessage());
+                                                        Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
                                                     }
                                                 }
-											} catch (JSONException e) {
-                                                e.printStackTrace();
-												Log.e(TAG, e.getMessage());
-                                                Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
-											}
-										}
 
-									});
-									lastFetch = System.currentTimeMillis() / 1000.0;
-								}
-							} catch (IOException e) {
-                                e.printStackTrace();
-                                Log.e(TAG, e.getMessage());
-                                Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
-							}
-						}
-					});
-				}
-			}
-		);
+                                            });
+                                            lastFetch = System.currentTimeMillis() / 1000.0;
+                                        }
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                        Log.e(TAG, e.getMessage());
+                                        Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            });
+                        }
+                    }
+            );
+        } else {
+            try {
+                String host = sharedPref.getString(Constants.OPT_MQ_HOST, "");
+                String userName = sharedPref.getString(Constants.OPT_MQ_LOGIN, "");
+                String password = sharedPref.getString(Constants.OPT_MQ_PASSWD, "");
+                MemoryPersistence persistence = new MemoryPersistence();
+                client = new MqttClient("tcp://" + host + ":1883", Constants.MQ_CLIENTID, persistence);
+                MqttConnectOptions connOpts = new MqttConnectOptions();
+                connOpts.setUserName(userName);
+                connOpts.setPassword(password.toCharArray());
+                client.connect(connOpts);
+                client.subscribe(Constants.TOPIC_SERVER);
+                client.setCallback(new MqttCallback() {
+                    @Override
+                    public void connectionLost(Throwable throwable) {
+                        Log.e(TAG, throwable.getMessage());
+                        Toast.makeText(getApplicationContext(), throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
 
-        try {
-            client = new MqttClient("tcp://localhost:1883", "pahomqttpublish1");
-        } catch (MqttException e) {
-            e.printStackTrace();
+                    @Override
+                    public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
+                        Log.d(TAG, "Got response: " + mqttMessage.toString());
+                        Intent carrier = new Intent();
+                        JSONObject data = new JSONObject(mqttMessage.toString());
+                        carrier.putExtra("data", data.toString());
+                        carrier.putExtra("type", "status");
+                        setResult(RESULT_OK, carrier);
+                        finish();
+                    }
+
+                    @Override
+                    public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
+
+                    }
+                });
+                Intent it = getIntent();
+                String job = it.getStringExtra("job");
+                String payLoad = "{\"command\":\"" + job + "\"}";
+                MqttMessage message = new MqttMessage();
+                message.setPayload(payLoad.getBytes());
+                client.publish(Constants.TOPIC_CLIENT, message);
+            } catch (MqttException e) {
+                e.printStackTrace();
+                Log.e(TAG, e.getMessage());
+                Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -196,13 +247,13 @@ public class BusyActivity extends Activity {
                         if (device.getString("nickname").equals(DEVICE_NAME)) {
                             Log.d(TAG, "Found the right device.");
                             deviceIden = device.getString("iden");
-                            prefEditor.putString("device_iden", deviceIden);
+                            prefEditor.putString(Constants.OPT_PB_CLIENT_IDEN, deviceIden);
                             prefEditor.commit();
                         }
                         if (device.getString("nickname").equals(SERVER_DEVICE_NAME)) {
                             Log.d(TAG, "Found the server device.");
                             serverDeviceIden = device.getString("iden");
-                            prefEditor.putString("server_device_iden", serverDeviceIden);
+                            prefEditor.putString(Constants.OPT_PB_SERVER_IDEN, serverDeviceIden);
                             prefEditor.commit();
                         }
                         if (deviceIden.length() > 0 && serverDeviceIden.length() > 0) {
@@ -236,7 +287,7 @@ public class BusyActivity extends Activity {
 									try {
 										Log.d(TAG, "Device created.");
 										deviceIden = responseData.getString("iden");
-										prefEditor.putString("device_iden", deviceIden);
+										prefEditor.putString(Constants.OPT_PB_CLIENT_IDEN, deviceIden);
 										prefEditor.commit();
 
                                         followCommand();
@@ -285,5 +336,19 @@ public class BusyActivity extends Activity {
             return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            if (client instanceof MqttCallback && client.isConnected()) {
+                client.disconnect();
+            }
+        } catch (MqttException e) {
+            e.printStackTrace();
+            Log.e(TAG, e.getMessage());
+        }
+
+        super.onDestroy();
     }
 }

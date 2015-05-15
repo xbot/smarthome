@@ -20,11 +20,8 @@ import org.json.JSONObject;
 public class MainActivity extends ActionBarActivity implements OnClickListener {
 	
 	public static final String TAG = "MainActivity";
-    public static final int REQUEST_GET_STATUS = 1;
-    public static final int REQUEST_TOGGLE_MOTION = 2;
 
 	private SharedPreferences sharedPref;
-	private String apiKey;
     private boolean initialized = false;
     private JSONObject statuses;
     private long exitTime;
@@ -57,8 +54,8 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 		int id = item.getItemId();
         if (id == R.id.action_refresh) {
             Intent it = new Intent(this, BusyActivity.class);
-            it.putExtra("job", "get_status");
-            startActivityForResult(it, REQUEST_GET_STATUS);
+            it.putExtra("job", Constants.CMD_GET_STATUS);
+            startActivityForResult(it, Constants.REQUEST_GET_STATUS);
             return true;
         } else if (id == R.id.action_settings) {
 			Intent it = new Intent(this, SettingsActivity.class);
@@ -80,11 +77,11 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
                 Intent it = new Intent(this, BusyActivity.class);
                 if (statuses != null && statuses.has("motion")) {
                     if (statuses.getString("motion").equals("on"))
-                        it.putExtra("job", "stop_motion");
+                        it.putExtra("job", Constants.CMD_STOP_MOTION);
                     else
-                        it.putExtra("job", "start_motion");
+                        it.putExtra("job", Constants.CMD_START_MOTION);
                 }
-                startActivityForResult(it, REQUEST_TOGGLE_MOTION);
+                startActivityForResult(it, Constants.REQUEST_TOGGLE_MOTION);
             } catch (JSONException e) {
                 e.printStackTrace();
                 Log.e(TAG, e.getMessage());
@@ -96,10 +93,8 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 	
 	public void onResume() {
 		super.onResume();
-		// Start SettingsActivity if no api key is found
-		apiKey = sharedPref.getString("api_key", "");
-		Log.d(TAG, "API Key" + apiKey);
-		if (apiKey.length() == 0) {
+		// Start SettingsActivity if app has not been properly configured
+		if (!isConfigured()) {
 			Intent it = new Intent(this, SettingsActivity.class);
 			startActivity(it);
 			return;
@@ -108,10 +103,27 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
         if (!initialized) {
             initialized = true;
             Intent it = new Intent(this, BusyActivity.class);
-            it.putExtra("job", "get_status");
-            startActivityForResult(it, REQUEST_GET_STATUS);
+            it.putExtra("job", Constants.CMD_GET_STATUS);
+            startActivityForResult(it, Constants.REQUEST_GET_STATUS);
         }
 	}
+
+    /**
+     * Check if the app is properly configured.
+     * @return whether the app has been configured.
+     */
+    private boolean isConfigured() {
+        String protocol = sharedPref.getString(Constants.OPT_PROTOCOL, Constants.PROTOCOL_MOSQUITTO);
+        if (protocol.equals(Constants.PROTOCOL_PUSHBULLET)) {
+            String apiKey = sharedPref.getString(Constants.OPT_PB_APIKEY, "");
+            return apiKey.length() > 0;
+        } else {
+            String login = sharedPref.getString(Constants.OPT_MQ_LOGIN, "");
+            String password = sharedPref.getString(Constants.OPT_MQ_PASSWD, "");
+            String host = sharedPref.getString(Constants.OPT_MQ_HOST, "");
+            return login.length()>0 && password.length()>0 && host.length()>0;
+        }
+    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent carrier) {

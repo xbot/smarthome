@@ -5,6 +5,22 @@
     <!-- Strings related to Settings -->
 
     <string name="pref_header_general">全局</string>
+    <string name="pref_header_protocol">推送服務</string>
     <string name="pref_option_api_key">PushBullet API Key</string>
+    <string name="pref_option_host">主機名</string>
+    <string name="pref_option_login">用戶名</string>
+    <string name="pref_option_password">密碼</string>
+
+    <string-array name="protocol_labels">
+        <item>Mosquitto</item>
+        <item>PushBullet</item>
+    </string-array>
+
+    <string-array name="protocol_values">
+        <item>mosquitto</item>
+        <item>pushbullet</item>
+    </string-array>
+
+    <string name="default_protocol">mosquitto</string>
 
 </resources>

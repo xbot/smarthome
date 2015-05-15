@@ -1,12 +1,49 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
 
-    <!-- NOTE: EditTextPreference accepts EditText attributes. -->
-    <!-- NOTE: EditTextPreference's summary should be set to its value by the activity code. -->
-    <EditTextPreference
-        android:key="api_key"
-        android:maxLines="1"
-        android:selectAllOnFocus="true"
-        android:singleLine="true"
-        android:title="@string/pref_option_api_key" />
+    <PreferenceCategory
+        android:title="@string/pref_header_general">
+        <ListPreference
+            android:key="communication_protocol"
+            android:title="@string/pref_header_protocol"
+            android:entries="@array/protocol_labels"
+            android:entryValues="@array/protocol_values"
+            android:dialogTitle="@string/pref_header_protocol"
+            android:defaultValue="@string/default_protocol" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Mosquitto">
+        <EditTextPreference
+            android:key="mq_host"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/pref_option_host" />
+
+        <EditTextPreference
+            android:key="mq_login"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/pref_option_login" />
+
+        <EditTextPreference
+            android:key="mq_password"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/pref_option_password"
+            android:inputType="textPassword"/>
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="PushBullet">
+        <EditTextPreference
+            android:key="pb_api_key"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="@string/pref_option_api_key" />
+    </PreferenceCategory>
 
 </PreferenceScreen>

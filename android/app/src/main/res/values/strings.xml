@@ -2,9 +2,9 @@
 <resources>
 
     <string name="app_name">有巢氏智能家庭</string>
-    <string name="app_version">M1</string>
+    <string name="app_version">M2</string>
     <string name="about_title">智能家居客戶端</string>
-    <string name="about_content">版本：M1\n作者：淘氣\n電郵：donie.leigh@gmail.com</string>
+    <string name="about_content">版本：M2\n作者：淘氣\n電郵：donie.leigh@gmail.com</string>
     <string name="title_activity_busy">请稍候</string>
     <string name="action_refresh">刷新</string>
     <string name="action_settings">设置</string>
