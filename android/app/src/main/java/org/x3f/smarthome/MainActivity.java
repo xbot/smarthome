@@ -37,6 +37,12 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 		btnMonitor.setOnClickListener(this);
 		
 		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+
+        // start service
+        if (sharedPref.getString(Constants.OPT_PROTOCOL, "").equals(Constants.PROTOCOL_MOSQUITTO)) {
+            Intent itService = new Intent(this, SmartHomeService.class);
+            startService(itService);
+        }
 	}
 
 	@Override

@@ -23,9 +23,9 @@ import com.koushikdutta.async.http.WebSocket;
 import com.koushikdutta.async.http.WebSocket.StringCallback;
 import com.koushikdutta.async.http.body.JSONObjectBody;
 
+import org.eclipse.paho.android.service.MqttAndroidClient;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
@@ -51,7 +51,7 @@ public class BusyActivity extends Activity {
     private double lastFetch = System.currentTimeMillis() / 1000.0;
     private ObjectMapper objectMapper = new ObjectMapper();
     private long exitTime;
-    private MqttClient client;
+    private MqttAndroidClient client;
     private String protocol;
 
     @Override
@@ -147,12 +147,12 @@ public class BusyActivity extends Activity {
                 String userName = sharedPref.getString(Constants.OPT_MQ_LOGIN, "");
                 String password = sharedPref.getString(Constants.OPT_MQ_PASSWD, "");
                 MemoryPersistence persistence = new MemoryPersistence();
-                client = new MqttClient("tcp://" + host + ":1883", Constants.MQ_CLIENTID, persistence);
+                client = new MqttAndroidClient(this, "tcp://" + host + ":1883", Constants.MQ_CLIENTID, persistence);
                 MqttConnectOptions connOpts = new MqttConnectOptions();
                 connOpts.setUserName(userName);
                 connOpts.setPassword(password.toCharArray());
                 client.connect(connOpts);
-                client.subscribe(Constants.TOPIC_SERVER);
+                client.subscribe(Constants.TOPIC_SERVER, 0);
                 client.setCallback(new MqttCallback() {
                     @Override
                     public void connectionLost(Throwable throwable) {
