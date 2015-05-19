@@ -7,7 +7,9 @@ Utilities which makes home life easier.
   - OS: Archlinux
   - Module:
       - python2
-      - pushbullet.py or paho-mqtt
+      - pushbullet.py
+      - yapbl
+      - paho-mqtt
       - python2-systemd
   - Software:
     - motion
