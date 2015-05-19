@@ -1,10 +1,16 @@
 package org.x3f.smarthome;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -23,13 +29,6 @@ import com.koushikdutta.async.http.WebSocket;
 import com.koushikdutta.async.http.WebSocket.StringCallback;
 import com.koushikdutta.async.http.body.JSONObjectBody;
 
-import org.eclipse.paho.android.service.MqttAndroidClient;
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,8 +50,24 @@ public class BusyActivity extends Activity {
     private double lastFetch = System.currentTimeMillis() / 1000.0;
     private ObjectMapper objectMapper = new ObjectMapper();
     private long exitTime;
-    private MqttAndroidClient client;
     private String protocol;
+    private MsgReceiver broadcastReceiver;
+
+    private SmartHomeService.MyBinder myBinder;
+    private ServiceConnection connection = new ServiceConnection() {
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Intent it = getIntent();
+            String job = it.getStringExtra("job");
+            myBinder = (SmartHomeService.MyBinder) service;
+            myBinder.doJob(job);
+        }
+    };
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -142,51 +157,15 @@ public class BusyActivity extends Activity {
                     }
             );
         } else {
-            try {
-                String host = sharedPref.getString(Constants.OPT_MQ_HOST, "");
-                String userName = sharedPref.getString(Constants.OPT_MQ_LOGIN, "");
-                String password = sharedPref.getString(Constants.OPT_MQ_PASSWD, "");
-                MemoryPersistence persistence = new MemoryPersistence();
-                client = new MqttAndroidClient(this, "tcp://" + host + ":1883", Constants.MQ_CLIENTID, persistence);
-                MqttConnectOptions connOpts = new MqttConnectOptions();
-                connOpts.setUserName(userName);
-                connOpts.setPassword(password.toCharArray());
-                client.connect(connOpts);
-                client.subscribe(Constants.TOPIC_SERVER, 0);
-                client.setCallback(new MqttCallback() {
-                    @Override
-                    public void connectionLost(Throwable throwable) {
-                        Log.e(TAG, throwable.getMessage());
-                        Toast.makeText(getApplicationContext(), throwable.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
+            // bind to the background service
+            Intent bindIntent = new Intent(this, SmartHomeService.class);
+            bindService(bindIntent, connection, BIND_AUTO_CREATE);
 
-                    @Override
-                    public void messageArrived(String s, MqttMessage mqttMessage) throws Exception {
-                        Log.d(TAG, "Got response: " + mqttMessage.toString());
-                        Intent carrier = new Intent();
-                        JSONObject data = new JSONObject(mqttMessage.toString());
-                        carrier.putExtra("data", data.toString());
-                        carrier.putExtra("type", "status");
-                        setResult(RESULT_OK, carrier);
-                        finish();
-                    }
-
-                    @Override
-                    public void deliveryComplete(IMqttDeliveryToken iMqttDeliveryToken) {
-
-                    }
-                });
-                Intent it = getIntent();
-                String job = it.getStringExtra("job");
-                String payLoad = "{\"command\":\"" + job + "\"}";
-                MqttMessage message = new MqttMessage();
-                message.setPayload(payLoad.getBytes());
-                client.publish(Constants.TOPIC_CLIENT, message);
-            } catch (MqttException e) {
-                e.printStackTrace();
-                Log.e(TAG, e.getMessage());
-                Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
+            // register broadcast receiver
+            broadcastReceiver = new MsgReceiver();
+            IntentFilter itf = new IntentFilter();
+            itf.addAction(Constants.BROADCAST_CHANNEL);
+            registerReceiver(broadcastReceiver, itf);
         }
     }
 
@@ -340,15 +319,25 @@ public class BusyActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        try {
-            if (client instanceof MqttCallback && client.isConnected()) {
-                client.disconnect();
-            }
-        } catch (MqttException e) {
-            e.printStackTrace();
-            Log.e(TAG, e.getMessage());
-        }
-
+        unregisterReceiver(broadcastReceiver);
+        unbindService(connection);
         super.onDestroy();
+    }
+
+    class MsgReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String data = intent.getStringExtra("data");
+            finishWithResult(data);
+        }
+    }
+
+    public void finishWithResult(String data) {
+        Intent carrier = new Intent();
+        carrier.putExtra("data", data);
+        carrier.putExtra("type", "status");
+        setResult(RESULT_OK, carrier);
+        finish();
     }
 }

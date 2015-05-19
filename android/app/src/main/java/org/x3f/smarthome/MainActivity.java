@@ -151,13 +151,10 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
                     if (carrier.getStringExtra("type").equals("status")
                             && data.has("data")) {
                         statuses = data.getJSONObject("data");
-                        Log.e(TAG, "statuses: " + statuses.toString());
                         if (statuses.has("motion") && statuses.getString("motion").equals("on")) {
-//                            btnMonitor.setText(getString(R.string.btn_monitor_off));
                             btnMonitor.setImageDrawable(getResources()
                                     .getDrawable(R.drawable.webcam_on));
                         } else {
-//                            btnMonitor.setText(getString(R.string.btn_monitor_on));
                             btnMonitor.setImageDrawable(getResources()
                                     .getDrawable(R.drawable.webcam_off));
                         }

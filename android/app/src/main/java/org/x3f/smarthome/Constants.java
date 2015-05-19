@@ -30,4 +30,7 @@ public class Constants {
 
     public static final int REQUEST_GET_STATUS = 1;
     public static final int REQUEST_TOGGLE_MOTION = 2;
+
+    // Intent filter name
+    public static final String BROADCAST_CHANNEL = "org.x3f.smarthome.BROARDCAST";
 }
