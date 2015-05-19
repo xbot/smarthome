@@ -57,10 +57,14 @@ class SmartHome(object):
 
     def getStatus(self):
         '''Collect the current statuses.'''
-        status = {'data':{}}
+        status = {}
         (tmpStatus, tmpOutput) = commands.getstatusoutput('systemctl status motion')
-        status['data']['motion'] = tmpStatus == 0 and 'on' or 'off'
-        return status
+        status['motion'] = tmpStatus == 0 and 'on' or 'off'
+        return self.getResponse('status', status)
+
+    def getResponse(self, type, data):
+        """Generate response data in JSON format."""
+        return json.dumps({'type':type, 'data':data})
 
 class Route(object):
     """Interface of the main bussiness."""
@@ -110,7 +114,7 @@ class PushBulletRoute(Route):
                             if fromDevice is None:
                                 journal.send('get_status: Cannot find device with iden "' + fromIden + '"', PRIORITY=journal.LOG_ERR)
                                 return
-                            self.pb.push_note('status', json.dumps(self.home.getStatus()), fromDevice)
+                            self.pb.push_note('status', self.home.getStatus(), fromDevice)
             except (PushbulletError, IOError, ValueError, KeyError), e:
                 journal.send(str(e), PRIORITY=journal.LOG_ERR)
 
@@ -146,7 +150,7 @@ class MosquittoRoute(Route):
                 journal.send('Invalid JSON received: ' + msg.payload + ', ' + e.message, PRIORITY=journal.LOG_ERR)
                 return
             self.home.followCommand(cmd)
-            self.mq.publish(self.cfg.get('mosquitto', 'topic_out'), json.dumps(self.home.getStatus()), 0)
+            self.mq.publish(self.cfg.get('mosquitto', 'topic_out'), self.home.getStatus(), 0)
         self.mq.on_message = on_message
 
     def run(self):
