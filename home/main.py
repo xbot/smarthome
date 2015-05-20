@@ -139,7 +139,7 @@ class MosquittoRoute(Route):
 
         def on_connect(client, userdata, flags, rc):
             journal.send("Connected with result code "+str(rc))
-            self.mq.subscribe(self.cfg.get('mosquitto', 'topic_in'))
+            self.mq.subscribe(self.cfg.get('mosquitto', 'topic_client'))
         self.mq.on_connect = on_connect
 
         def on_message(client, userdata, msg):
@@ -150,7 +150,7 @@ class MosquittoRoute(Route):
                 journal.send('Invalid JSON received: ' + msg.payload + ', ' + e.message, PRIORITY=journal.LOG_ERR)
                 return
             self.home.followCommand(cmd)
-            self.mq.publish(self.cfg.get('mosquitto', 'topic_out'), self.home.getStatus(), 0)
+            self.mq.publish(self.cfg.get('mosquitto', 'topic_msg'), self.home.getStatus(), 0)
         self.mq.on_message = on_message
 
     def run(self):

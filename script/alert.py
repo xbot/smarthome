@@ -9,7 +9,7 @@
 #
 ####################################################
 
-import sys, getopt, time
+import sys, getopt, time, json
 from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from systemd import journal
 
@@ -19,7 +19,8 @@ cfg = None
 host = None
 username = None
 password = None
-topic_out = None
+topic_msg = None
+topic_image = None
 timePoint = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 alertMsg = timePoint + '，发现入侵者！！！'
 apiKey = None
@@ -34,9 +35,10 @@ def send_alert_by_mosquitto(image):
     mq.username_pw_set(username, password)
     mq.on_publish = lambda mosq, userdata, mid: mosq.disconnect()
     mq.connect(host, 1883, 60)
-    mq.publish(topic_out, alertMsg.decode('utf-8'), 0)
+    data = {'type':'alert', 'data':alertMsg}
+    mq.publish(topic_msg, json.dumps(data), 0)
     with open(imageFile, 'rb') as f:
-        mq.publish(topic_out, bytearray(f.read()), 0)
+        mq.publish(topic_image, bytearray(f.read()), 0)
     mq.loop_forever()
 
 
@@ -75,9 +77,12 @@ if __name__ == '__main__':
             host = cfg.get('mosquitto', 'host')
             if host is None or len(host) == 0:
                 raise NoOptionError('host', 'mosquitto')
-            topic_out = cfg.get('mosquitto', 'topic_out')
-            if topic_out is None or len(topic_out) == 0:
-                raise NoOptionError('topic_out', 'mosquitto')
+            topic_msg = cfg.get('mosquitto', 'topic_msg')
+            if topic_msg is None or len(topic_msg) == 0:
+                raise NoOptionError('topic_msg', 'mosquitto')
+            topic_image = cfg.get('mosquitto', 'topic_image')
+            if topic_image is None or len(topic_image) == 0:
+                raise NoOptionError('topic_image', 'mosquitto')
 
             send_alert_by_mosquitto(imageFile)
     except (NoSectionError, NoOptionError), e:
