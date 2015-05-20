@@ -35,8 +35,8 @@ def send_alert_by_mosquitto(image):
     mq.username_pw_set(username, password)
     mq.on_publish = lambda mosq, userdata, mid: mosq.disconnect()
     mq.connect(host, 1883, 60)
-    data = {'type':'alert', 'data':alertMsg}
-    mq.publish(topic_msg, json.dumps(data), 0)
+    # data = {'type':'alert', 'data':alertMsg}
+    # mq.publish(topic_msg, json.dumps(data), 0)
     with open(imageFile, 'rb') as f:
         mq.publish(topic_image, bytearray(f.read()), 0)
     mq.loop_forever()

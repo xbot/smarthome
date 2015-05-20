@@ -11,6 +11,7 @@ public class Constants {
     // Mosquitto topics
     public static final String TOPIC_CLIENT = "client";
     public static final String TOPIC_SERVER = "server";
+    public static final String TOPIC_IMAGE = "image";
 
     public static final String MQ_CLIENTID = "android";
 
