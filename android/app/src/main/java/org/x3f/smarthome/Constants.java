@@ -13,6 +13,10 @@ public class Constants {
     public static final String TOPIC_SERVER = "server";
     public static final String TOPIC_IMAGE = "image";
 
+    // Message types
+    public static final String MSG_TYPE_STATUS = "status";
+    public static final String MSG_TYPE_ALERT = "alert";
+
     public static final String MQ_CLIENTID = "android";
 
     // Option names
@@ -34,4 +38,9 @@ public class Constants {
 
     // Intent filter name
     public static final String BROADCAST_CHANNEL = "org.x3f.smarthome.BROARDCAST";
+
+    // QoS
+    public static final int QOS_ZERO = 0;
+    public static final int QOS_ONE = 1;
+    public static final int QOS_TWO = 2;
 }

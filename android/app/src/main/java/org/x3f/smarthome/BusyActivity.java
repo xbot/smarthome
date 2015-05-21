@@ -336,7 +336,7 @@ public class BusyActivity extends Activity {
     public void finishWithResult(String data) {
         Intent carrier = new Intent();
         carrier.putExtra("data", data);
-        carrier.putExtra("type", "status");
+        carrier.putExtra("type", Constants.MSG_TYPE_STATUS);
         setResult(RESULT_OK, carrier);
         finish();
     }

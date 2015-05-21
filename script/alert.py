@@ -38,7 +38,7 @@ def send_alert_by_mosquitto(image):
     # data = {'type':'alert', 'data':alertMsg}
     # mq.publish(topic_msg, json.dumps(data), 0)
     with open(imageFile, 'rb') as f:
-        mq.publish(topic_image, bytearray(f.read()), 0)
+        mq.publish(topic_image, bytearray(f.read()), 2)
     mq.loop_forever()
 
 

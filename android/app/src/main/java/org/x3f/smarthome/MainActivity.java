@@ -148,7 +148,7 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
                         return;
                     }
                     JSONObject data = new JSONObject(carrier.getStringExtra("data"));
-                    if (carrier.getStringExtra("type").equals("status")
+                    if (carrier.getStringExtra("type").equals(Constants.MSG_TYPE_STATUS)
                             && data.has("data")) {
                         statuses = data.getJSONObject("data");
                         if (statuses.has("motion") && statuses.getString("motion").equals("on")) {
