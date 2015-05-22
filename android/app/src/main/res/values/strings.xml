@@ -17,6 +17,6 @@
     <string name="msg_cancel_job">再按一次中止當前任務</string>
     <string name="msg_request_failed">請求發送失敗，檢查網絡並重試</string>
     <string name="msg_job_canceled">任務已取消</string>
-    <string name="msg_invasion_alert">入侵警報</string>
+    <string name="msg_invasion_alert">發現入侵</string>
 
 </resources>

@@ -34,4 +34,5 @@ dependencies {
 //    compile (group: 'org.eclipse.paho', name: 'org.eclipse.paho.android.service', version: '1.0.2') {
 //        exclude module: 'support-v4'
 //    }
+//    compile 'com.drewnoakes:metadata-extractor:2.8.1'
 }

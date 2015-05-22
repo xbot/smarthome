@@ -15,6 +15,7 @@ import android.net.NetworkInfo;
 import android.os.Binder;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
+import android.util.Base64;
 import android.util.Log;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -132,6 +133,8 @@ public class SmartHomeService extends Service {
 
                 @Override
                 public void messageArrived(String topic, MqttMessage mqttMessage) throws Exception {
+                    Log.i(TAG, "Got a message on topic [" + topic + "]: " + mqttMessage.toString());
+
                     // Create notification builder
                     NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                     Notification.Builder mBuilder = new Notification.Builder(getApplicationContext());
@@ -140,33 +143,39 @@ public class SmartHomeService extends Service {
                             .setSmallIcon(R.drawable.ic_launcher)
                             .setDefaults(Notification.DEFAULT_VIBRATE)
                             .setWhen(System.currentTimeMillis());
+
+                    JSONObject msg = null;
+                    try {
+                        msg = new JSONObject(mqttMessage.toString());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        Log.e(TAG, e.getMessage());
+                        return;
+                    }
+
                     // Handle plain messages
                     if (topic.equals(Constants.TOPIC_SERVER)) {
-                        Log.d(TAG, "Got response: " + mqttMessage.toString());
-                        try {
-                            JSONObject msg = new JSONObject(mqttMessage.toString());
-                            if (msg.has("type") && msg.getString("type").equals(Constants.MSG_TYPE_ALERT)) {
-                                mBuilder.setContentText(msg.getString("data"));
-                                nm.notify(notificationId++, mBuilder.build());
-                            } else {
-                                Intent it = new Intent(Constants.BROADCAST_CHANNEL);
-                                it.putExtra("data", mqttMessage.toString());
-                                sendBroadcast(it);
-                            }
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                            Log.e(TAG, e.getMessage());
+                        if (msg.has("type") && msg.getString("type").equals(Constants.MSG_TYPE_ALERT)) {
+                            mBuilder.setContentText(msg.getString("data"));
+                            nm.notify(notificationId++, mBuilder.build());
+                        } else {
+                            Intent it = new Intent(Constants.BROADCAST_CHANNEL);
+                            it.putExtra("data", mqttMessage.toString());
+                            sendBroadcast(it);
                         }
                     } else if (topic.equals(Constants.TOPIC_IMAGE)) {
                         // Handle images
-                        Log.d(TAG, "Got an image file.");
-                        final Notification.BigPictureStyle bigPictureStyle = new Notification.BigPictureStyle();
-                        bigPictureStyle.setBigContentTitle(getString(R.string.msg_invasion_alert));
-                        byte[] bytes = mqttMessage.getPayload();
-                        final Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                        bigPictureStyle.bigPicture(bitmap);
-                        mBuilder.setStyle(bigPictureStyle);
-                        nm.notify(notificationId++, mBuilder.build());
+                        if (msg.has("image") && msg.has("time")) {
+                            byte[] bytes = Base64.decode(msg.getString("image"), Base64.DEFAULT);
+                            final Notification.BigPictureStyle bigPictureStyle = new Notification.BigPictureStyle();
+                            bigPictureStyle.setBigContentTitle(getString(R.string.msg_invasion_alert));
+                            final Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                            bigPictureStyle.bigPicture(bitmap);
+                            mBuilder.setStyle(bigPictureStyle).setWhen(msg.getLong("time"));
+                            nm.notify(notificationId++, mBuilder.build());
+                        } else {
+                            Log.e(TAG, "Invalid message.");
+                        }
                     } else {
                         Log.e(TAG, "Unknown topic: " + topic);
                     }
