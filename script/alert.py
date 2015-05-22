@@ -37,8 +37,9 @@ def send_alert_by_mosquitto(image):
     mq.connect(host, 1883, 60)
     # data = {'type':'alert', 'data':alertMsg}
     # mq.publish(topic_msg, json.dumps(data), 0)
+    import binascii
     with open(imageFile, 'rb') as f:
-        mq.publish(topic_image, bytearray(f.read()), 2)
+        mq.publish(topic_image, json.dumps({'image':binascii.b2a_base64(f.read()), 'time':time.time()*1000}), 2);
     mq.loop_forever()
 
 
