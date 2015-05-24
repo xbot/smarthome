@@ -12,6 +12,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONException;
@@ -27,6 +28,7 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
     private long exitTime;
 
     private ImageButton btnMonitor;
+    private TextView textViewTemp;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +37,7 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 		
 		btnMonitor = (ImageButton) findViewById(R.id.btnMonitor);
 		btnMonitor.setOnClickListener(this);
+        textViewTemp = (TextView) findViewById(R.id.textViewTemp);
 		
 		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -151,12 +154,17 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
                     if (carrier.getStringExtra("type").equals(Constants.MSG_TYPE_STATUS)
                             && data.has("data")) {
                         statuses = data.getJSONObject("data");
+                        // motion
                         if (statuses.has("motion") && statuses.getString("motion").equals("on")) {
                             btnMonitor.setImageDrawable(getResources()
                                     .getDrawable(R.drawable.webcam_on));
                         } else {
                             btnMonitor.setImageDrawable(getResources()
                                     .getDrawable(R.drawable.webcam_off));
+                        }
+                        // temperature
+                        if (statuses.has("temperature")) {
+                            textViewTemp.setText(String.format(getString(R.string.tmpl_temperature), statuses.getString("temperature")));
                         }
                     }
                 } catch (JSONException e) {
