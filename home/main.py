@@ -21,6 +21,7 @@ from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from pushbullet import Pushbullet, Listener, PushbulletError
 import paho.mqtt.client as mqtt
 from systemd import journal
+from w1thermsensor import W1ThermSensor
 
 CONFIG_FILE = '/etc/smarthome.conf'
 
@@ -58,8 +59,12 @@ class SmartHome(object):
     def getStatus(self):
         '''Collect the current statuses.'''
         status = {}
+        # motion
         (tmpStatus, tmpOutput) = commands.getstatusoutput('systemctl status motion')
         status['motion'] = tmpStatus == 0 and 'on' or 'off'
+        # 
+        sensor = W1ThermSensor()
+        status['temperature'] = round(sensor.get_temperature(), 1)
         return self.getResponse('status', status)
 
     def getResponse(self, type, data):
