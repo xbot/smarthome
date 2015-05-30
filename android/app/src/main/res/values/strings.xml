@@ -2,9 +2,9 @@
 <resources>
 
     <string name="app_name">有巢氏智能家庭</string>
-    <string name="app_version">M4</string>
+    <string name="app_version">M5</string>
     <string name="about_title">智能家居客戶端</string>
-    <string name="about_content">版本：M4\n作者：淘氣\n電郵：donie.leigh@gmail.com</string>
+    <string name="about_content">版本：M5\n作者：淘氣\n電郵：donie.leigh@gmail.com</string>
     <string name="title_activity_busy">请稍候</string>
     <string name="action_refresh">刷新</string>
     <string name="action_settings">设置</string>
@@ -19,6 +19,7 @@
     <string name="msg_job_canceled">任務已取消</string>
     <string name="msg_invasion_alert">發現入侵</string>
 
-    <string name="tmpl_temperature">寢宮溫度：%1$s℃</string>
+    <string name="tmpl_temperature">溫度：%1$s℃</string>
+    <string name="tmpl_humidity">濕度：%1$s%%</string>
 
 </resources>

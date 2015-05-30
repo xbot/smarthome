@@ -29,6 +29,7 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 
     private ImageButton btnMonitor;
     private TextView textViewTemp;
+    private TextView textViewHumidity;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +39,7 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
 		btnMonitor = (ImageButton) findViewById(R.id.btnMonitor);
 		btnMonitor.setOnClickListener(this);
         textViewTemp = (TextView) findViewById(R.id.textViewTemp);
+        textViewHumidity = (TextView) findViewById(R.id.textViewHumidity);
 		
 		sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 
@@ -165,6 +167,10 @@ public class MainActivity extends ActionBarActivity implements OnClickListener {
                         // temperature
                         if (statuses.has("temperature")) {
                             textViewTemp.setText(String.format(getString(R.string.tmpl_temperature), statuses.getString("temperature")));
+                        }
+                        // humidity
+                        if (statuses.has("humidity")) {
+                            textViewHumidity.setText(String.format(getString(R.string.tmpl_humidity), statuses.getString("humidity")));
                         }
                     }
                 } catch (JSONException e) {
