@@ -22,6 +22,7 @@ from pushbullet import Pushbullet, Listener, PushbulletError
 import paho.mqtt.client as mqtt
 from systemd import journal
 from w1thermsensor import W1ThermSensor
+import Adafruit_DHT
 
 CONFIG_FILE = '/etc/smarthome.conf'
 
@@ -46,6 +47,9 @@ class Account(object):
 class SmartHome(object):
     """Common bussiness logic."""
 
+    def __init__(self, cfg):
+        self.cfg = cfg
+
     def followCommand(self, cmd, fromIden=None):
         '''Do job as required.'''
 	journal.send('Follow command: ' + json.dumps(cmd))
@@ -62,9 +66,16 @@ class SmartHome(object):
         # motion
         (tmpStatus, tmpOutput) = commands.getstatusoutput('systemctl status motion')
         status['motion'] = tmpStatus == 0 and 'on' or 'off'
-        # 
+        # temperature
         sensor = W1ThermSensor()
         status['temperature'] = round(sensor.get_temperature(), 1)
+        # humidity
+        try:
+            pinHumidity = self.cfg.get('global', 'humidity_pin')
+            RH, T = Adafruit_DHT.read_retry(Adafruit_DHT.DHT11, pinHumidity)
+            status['humidity'] = RH
+        except NoOptionError:
+            pass
         return self.getResponse('status', status)
 
     def getResponse(self, type, data):
@@ -76,7 +87,7 @@ class Route(object):
 
     def __init__(self, cfg):
         self.cfg = cfg
-        self.home = SmartHome()
+        self.home = SmartHome(cfg)
 
     def run(self):
         '''Keep running and listening for all commands from user.'''
